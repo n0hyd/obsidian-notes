@@ -1,0 +1,7 @@
+venv
+.env
+__pycache__
+processed_files.json
+*.mp3
+*.m4a
+*.wav

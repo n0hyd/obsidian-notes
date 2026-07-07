@@ -1,0 +1,7 @@
+JPR_ROOT = r"C:\Users\bjones\iCloudDrive\iCloud~com~openplanetsoftware~just-press-record"
+OBSIDIAN_DAILY_BASE = r"C:\Users\bjones\Documents\Obsidian\Brain of Burke\Daily"
+OBSIDIAN_VAULT_NAME = "Brain of Burke"
+WHISPER_MODEL = "base.en"
+OPENAI_MODEL = "gpt-5.4-mini"
+PROCESSED_LOG = "processed_files.json"
+HF_HUB_DISABLE_SYMLINKS_WARNING = "1"
