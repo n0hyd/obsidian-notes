@@ -3,3 +3,37 @@ faster-whisper
 openai
 python-dotenv
 mutagen
+
+Verified environment (tested on this machine)
+System: FFmpeg 7.1.1 (shared build) installed on PATH
+Python runtime: CPU-only PyTorch 2.8 (install CPU wheel from PyTorch index)
+TorchCodec: 0.7
+WhisperX and Pyannote: tested and load successfully
+Install sequence (example for CPU wheel; run the appropriate wheel installer for your platform):
+pip install "torch==2.8.0+cpu" -f https://download.pytorch.org/whl/cpu/torch_stable.html
+pip install torchcodec==0.7 whisperx==1.2.1 pyannote-audio==2.1.1
+whisperx==1.2.1
+pyannote-audio==2.1.1
+torchcodec==0.7
+
+Note: prefer installing the torch wheel from PyTorch's index (CPU vs CUDA) before the packages above.
+Add a "Verified environment" section to MEETING_NOTE_DOC.md (insert it under "Dependencies"):
+Verified environment (your setup)
+FFmpeg: 7.1.1 (shared build) installed and on PATH.
+
+PyTorch: CPU-only PyTorch 2.8 (the environment uses a CPU wheel installed from the PyTorch index).
+
+TorchCodec: 0.7 (compatible with PyTorch 2.8 in this setup).
+
+WhisperX and Pyannote: import and load successfully in this environment.
+
+Windows DLL handling: transcribe.py includes an automatic helper that locates the system ffmpeg executable and adds its directory to the process DLL search path on Windows:
+
+The code sets _FFMPEG_DLL_DIRECTORY using os.add_dll_directory(os.path.dirname(shutil.which("ffmpeg"))) when available, allowing TorchCodec to find FFmpeg's shared DLL files on Windows.
+Recommended install order:
+
+Install the appropriate torch wheel (CPU or CUDA) from PyTorch's wheel index.
+Install torchcodec==0.7, then whisperx==1.2.1 and pyannote-audio==2.1.1.
+Verify with:
+where ffmpeg and ffmpeg -version
+.python.exe -c "import torch, whisperx; from pyannote.audio import Pipeline; print(torch.__version__, whisperx.__version__)"

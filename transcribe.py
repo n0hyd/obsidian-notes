@@ -1,8 +1,18 @@
 import json
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime, timezone
+
+# Allow TorchCodec to find FFmpeg's shared DLL files on Windows.
+_FFMPEG_DLL_DIRECTORY = None
+if os.name == "nt" and hasattr(os, "add_dll_directory"):
+    _ffmpeg_path = shutil.which("ffmpeg")
+    if _ffmpeg_path:
+        _FFMPEG_DLL_DIRECTORY = os.add_dll_directory(
+            os.path.dirname(_ffmpeg_path)
+        )
 
 from faster_whisper import WhisperModel
 from mutagen import File as MutagenFile
@@ -14,7 +24,35 @@ os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", config.HF_HUB_DISABLE_S
 MODEL = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8")
 
 
+def _transcribe_with_whisperx(audio_path: str) -> str:
+    try:
+        import whisperx
+    except Exception as exc:
+        raise RuntimeError("whisperx is not available") from exc
+
+    try:
+        model = whisperx.load_model("base.en", device="cpu")
+        audio = whisperx.load_audio(audio_path)
+        result = model.transcribe(audio, batch_size=8, language="en")
+        segments = result.get("segments", [])
+        transcript = " ".join(
+            segment.get("text", "").strip() for segment in segments if segment.get("text", "").strip()
+        ).strip()
+    except Exception as exc:
+        raise RuntimeError("WhisperX transcription failed") from exc
+
+    if not transcript:
+        raise RuntimeError(f"WhisperX transcription returned no text for audio file: {audio_path}")
+
+    return transcript
+
+
 def transcribe(audio_path: str) -> str:
+    try:
+        return _transcribe_with_whisperx(audio_path)
+    except Exception as exc:
+        logging.warning("WhisperX transcription unavailable, falling back to faster-whisper: %s", exc)
+
     try:
         segments, _ = MODEL.transcribe(audio_path)
         transcript = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()

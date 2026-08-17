@@ -1,7 +1,12 @@
 JPR_ROOT = r"C:\Users\bjones\iCloudDrive\iCloud~com~openplanetsoftware~just-press-record"
 OBSIDIAN_DAILY_BASE = r"C:\Users\bjones\Documents\Obsidian\Brain of Burke\Daily"
+OBSIDIAN_INBOX_BASE = r"C:\Users\bjones\Documents\Obsidian\Brain of Burke\0 Inbox"
 OBSIDIAN_VAULT_NAME = "Brain of Burke"
 WHISPER_MODEL = "base.en"
-OPENAI_MODEL = "gpt-5.4-mini"
+OPENAI_MODEL = "gpt-4o-mini"
+TASK_TRIGGER_PHRASE = "create a task"
+QUICK_NOTE_TRIGGER_PHRASE = "quick note"
+MEETING_NOTE_TRIGGER_PHRASE = "meeting note"
+FILLER_WORDS = ["um", "uh", "so", "okay", "actually", "basically"]
 PROCESSED_LOG = "processed_files.json"
 HF_HUB_DISABLE_SYMLINKS_WARNING = "1"

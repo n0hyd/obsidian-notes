@@ -17,6 +17,7 @@ AUDIO_EXTENSIONS = {".m4a", ".wav", ".aif"}
 DATE_FOLDER_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 POLL_INTERVAL_SECONDS = 2
 MAX_WAIT_SECONDS = 60
+RESCAN_INTERVAL_SECONDS = 30
 
 
 def load_processed_files(log_path):
@@ -101,6 +102,9 @@ class JprEventHandler(FileSystemEventHandler):
     def on_moved(self, event):
         self._handle_file_event(event.dest_path, event.is_directory)
 
+    def on_modified(self, event):
+        self._handle_file_event(event.src_path, event.is_directory)
+
 
 class JprWatcher:
     def __init__(self):
@@ -135,7 +139,9 @@ class JprWatcher:
                 return
 
             logging.info("Processing file: %s", path)
-            process_file(path_string)
+            if not process_file(path_string):
+                logging.warning("File was not processed successfully: %s", path)
+                return
 
             with self.lock:
                 self.processed_files.add(path_string)
@@ -148,6 +154,16 @@ class JprWatcher:
             with self.lock:
                 self.pending_files.discard(path_string)
 
+    def scan_for_unprocessed_files(self):
+        if not self.root_path.exists():
+            return
+
+        for path in self.root_path.rglob("*"):
+            if not path.is_file():
+                continue
+
+            self.handle_new_path(path)
+
     def run(self):
         if not self.root_path.exists():
             logging.error("Watch root does not exist: %s", self.root_path)
@@ -158,10 +174,15 @@ class JprWatcher:
         observer.start()
 
         logging.info("Watching for JPR audio files in %s", self.root_path)
+        next_rescan_at = time.time() + RESCAN_INTERVAL_SECONDS
 
         try:
             while True:
                 time.sleep(1)
+
+                if time.time() >= next_rescan_at:
+                    self.scan_for_unprocessed_files()
+                    next_rescan_at = time.time() + RESCAN_INTERVAL_SECONDS
         except KeyboardInterrupt:
             logging.info("Stopping watcher")
             observer.stop()

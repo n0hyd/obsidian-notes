@@ -4,39 +4,62 @@ from datetime import datetime
 from pathlib import Path
 
 import config
-from obsidian_writer import append_to_daily_note
-from summarize import summarize
+from intent import detect_intent, extract_task, strip_intent_trigger
+from obsidian_writer import (
+    append_task_to_daily_note,
+    append_to_daily_note,
+    create_quick_note,
+    create_meeting_note,
+)
+from summarize import generate_note_title, summarize
 from transcribe import get_recording_timestamp, transcribe
 
 
-def process_file(audio_path: str) -> None:
+def process_file(audio_path: str) -> bool:
     filename = Path(audio_path).name
 
     try:
         transcript = transcribe(audio_path)
     except Exception:
         logging.exception("Failed during transcription for %s", filename)
-        return
+        return False
 
     try:
         timestamp = get_recording_timestamp(audio_path)
     except Exception:
         logging.exception("Failed to get recording timestamp for %s", filename)
-        return
+        return False
+
+    intent = detect_intent(transcript)
 
     try:
-        summary = summarize(transcript)
+        if intent == "task":
+            extraction = extract_task(transcript, timestamp)
+            append_task_to_daily_note(
+                extraction.task_text, extraction.due_date, timestamp
+            )
+            logging.info("Successfully processed task for %s", filename)
+        elif intent == "quick_note":
+            note_text = strip_intent_trigger(transcript)
+            title = generate_note_title(note_text)
+            summary = summarize(note_text)
+            create_quick_note(title, summary, timestamp)
+            logging.info("Successfully processed quick note for %s", filename)
+        elif intent == "meeting_note":
+            note_text = strip_intent_trigger(transcript)
+            title = generate_note_title(note_text)
+            summary = summarize(note_text)
+            create_meeting_note(title, summary, timestamp)
+            logging.info("Successfully processed meeting note for %s", filename)
+        else:
+            summary = summarize(transcript)
+            append_to_daily_note(summary, timestamp)
+            logging.info("Successfully processed note for %s", filename)
     except Exception:
-        logging.exception("Failed during summarization for %s", filename)
-        return
+        logging.exception("Failed during intent processing for %s", filename)
+        return False
 
-    try:
-        append_to_daily_note(summary, timestamp)
-    except Exception:
-        logging.exception("Failed to append daily note for %s", filename)
-        return
-
-    logging.info("Successfully processed %s: %s", filename, summary)
+    return True
 
 
 def _scan_startup_backlog(watcher_module) -> None:
@@ -79,7 +102,10 @@ def _scan_startup_backlog(watcher_module) -> None:
     for _, path in sorted(ready_backlog, key=lambda item: item[0]):
         path_string = str(path)
         logging.info("Processing backlog file: %s", path)
-        process_file(path_string)
+        if not process_file(path_string):
+            logging.warning("Backlog file was not processed successfully: %s", path)
+            continue
+
         processed_files.add(path_string)
         watcher_module.save_processed_files(log_path, processed_files)
         backlog_processed += 1
